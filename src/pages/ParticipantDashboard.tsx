@@ -1,12 +1,12 @@
 
 import { useState, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/auth/AuthProvider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Check, Loader2, Save, BarChartHorizontal, CalendarDays } from 'lucide-react';
+import { Check, Loader2, Save, BarChartHorizontal, CalendarDays, Trophy } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useForm } from 'react-hook-form';
@@ -60,7 +60,7 @@ const fetchParticipantChallengeData = async (userChallengeId: string): Promise<P
 
   const progressPromise = supabase
     .from('user_challenge_progress')
-    .select('day_number')
+    .select('*')
     .eq('user_challenge_id', userChallengeId);
 
   const [challengeResult, progressResult] = await Promise.all([challengePromise, progressPromise]);
@@ -75,10 +75,9 @@ const fetchParticipantChallengeData = async (userChallengeId: string): Promise<P
 };
 
 const buildSchema = (metrics?: ChallengeMetric[]) => {
-    if (!metrics) return z.object({});
-    const dailyMetrics = metrics.filter(m => m.collection_frequency?.includes('daily'));
+    if (!metrics || metrics.length === 0) return z.object({});
     const schemaFields: Record<string, z.ZodType<any, any>> = {};
-    dailyMetrics.forEach(metric => {
+    metrics.forEach(metric => {
       switch (metric.metric_type) {
         case 'number_input':
         case 'slider_1_10':
@@ -94,6 +93,7 @@ const buildSchema = (metrics?: ChallengeMetric[]) => {
 
 const ParticipantDashboard = () => {
   const { userChallengeId } = useParams<{ userChallengeId: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -113,7 +113,7 @@ const ParticipantDashboard = () => {
     [userChallenge]
   );
   
-  const formSchema = useMemo(() => buildSchema(userChallenge?.challenges.challenge_metrics), [userChallenge]);
+  const formSchema = useMemo(() => buildSchema(dailyMetrics), [dailyMetrics]);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema), defaultValues: {},
@@ -172,10 +172,13 @@ const ParticipantDashboard = () => {
       return;
     }
   
+    const isFinalDay = userChallenge.current_day === userChallenge.challenges?.duration_days;
     const nextDay = userChallenge.current_day + 1;
+    const newStatus = isFinalDay ? 'completed' : 'active';
+  
     const { error: updateError } = await supabase
       .from('user_challenges')
-      .update({ current_day: nextDay })
+      .update({ current_day: nextDay, challenge_status: newStatus })
       .eq('id', userChallenge.id);
   
     setIsCompleting(false);
@@ -183,8 +186,13 @@ const ParticipantDashboard = () => {
     if (updateError) {
       toast({ title: "錯誤", description: updateError.message, variant: "destructive" });
     } else {
-      toast({ title: `第 ${userChallenge.current_day} 天完成！`, description: "做得好，繼續前進！" });
       queryClient.invalidateQueries({ queryKey: ['participant_challenge_data', userChallengeId] });
+      if (isFinalDay) {
+        toast({ title: "挑戰完成！", description: "恭喜您！現在來看看您的成果吧。" });
+        navigate(`/my-challenges/${userChallengeId}/report`);
+      } else {
+        toast({ title: `第 ${userChallenge.current_day} 天完成！`, description: "做得好，繼續前進！" });
+      }
     }
   };
 
@@ -197,12 +205,22 @@ const ParticipantDashboard = () => {
       <div className="container mx-auto max-w-4xl py-12">
         <div className='flex justify-between items-center mb-4'>
             <Link to="/my-challenges" className="text-sm text-primary hover:underline">&larr; 返回我的挑戰</Link>
-            <Button asChild variant="outline">
-                <Link to={`/my-challenges/${userChallengeId}/progress`}>
-                    <BarChartHorizontal className="mr-2 h-4 w-4" />
-                    查看進度趨勢
-                </Link>
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button asChild variant="outline">
+                  <Link to={`/my-challenges/${userChallengeId}/progress`}>
+                      <BarChartHorizontal className="mr-2 h-4 w-4" />
+                      進度趨勢
+                  </Link>
+              </Button>
+              {userChallenge.challenge_status === 'completed' && (
+                <Button asChild>
+                  <Link to={`/my-challenges/${userChallengeId}/report`}>
+                    <Trophy className="mr-2 h-4 w-4" />
+                    查看成果報告
+                  </Link>
+                </Button>
+              )}
+            </div>
         </div>
         <h1 className="text-4xl font-bold text-foreground mb-2">{userChallenge.challenges?.name}</h1>
         <p className="text-lg text-muted-foreground mb-8">由 {userChallenge.challenges?.users?.name} 發起</p>
@@ -232,6 +250,14 @@ const ParticipantDashboard = () => {
                   <div className='text-center py-10'>
                     <h2 className="text-2xl font-bold">恭喜！</h2>
                     <p className="text-muted-foreground mt-2">您已完成所有挑戰任務！</p>
+                    {userChallenge.challenge_status === 'completed' && (
+                      <Button asChild className="mt-4">
+                        <Link to={`/my-challenges/${userChallengeId}/report`}>
+                          <Trophy className="mr-2 h-4 w-4" />
+                          查看您的最終成果報告
+                        </Link>
+                      </Button>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -263,7 +289,7 @@ const ParticipantDashboard = () => {
                                       <Slider
                                         min={1} max={10} step={1}
                                         onValueChange={(value) => field.onChange(value[0])}
-                                        value={[field.value as number || 5]}
+                                        value={[field.value as number ?? 5]}
                                       />
                                       <span className="font-bold text-lg text-primary w-12 text-center">{field.value || '-'}</span>
                                     </div>
