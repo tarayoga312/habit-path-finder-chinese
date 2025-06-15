@@ -17,14 +17,14 @@ const ChallengeSection: React.FC<ChallengeSectionProps> = ({
   showViewAll = true
 }) => {
   return (
-    <section className="py-16 bg-off-white">
+    <section className="py-20 bg-card">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-dark-slate-gray mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
             {title}
           </h2>
           {subtitle && (
-            <p className="text-lg text-dark-slate-gray/70 max-w-2xl mx-auto">
+            <p className="text-lg text-foreground/70 max-w-3xl mx-auto">
               {subtitle}
             </p>
           )}
@@ -40,7 +40,7 @@ const ChallengeSection: React.FC<ChallengeSectionProps> = ({
         
         {showViewAll && (
           <div className="text-center">
-            <Button className="btn-secondary">
+            <Button variant="outline" size="lg" className="text-base font-semibold">
               查看所有挑戰
             </Button>
           </div>

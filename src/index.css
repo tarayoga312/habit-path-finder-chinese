@@ -5,39 +5,37 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the earthy design system. All colors, gradients, fonts, etc should be defined here. */
-
 @layer base {
   :root {
-    --background: 45 11% 96%; /* Soft Beige #F5F5DC */
-    --foreground: 195 25% 31%; /* Dark Slate Gray #2F4F4F */
+    --background: 0 0% 100%; /* #FFFFFF */
+    --foreground: 210 3% 25%; /* #3C4043 - Google's Dark Gray */
 
-    --card: 60 9% 98%; /* Off-White #FFFAF0 */
-    --card-foreground: 195 25% 31%;
+    --card: 220 13% 98%; /* #F8F9FA - Off-white */
+    --card-foreground: 210 3% 25%;
 
-    --popover: 60 9% 98%;
-    --popover-foreground: 195 25% 31%;
+    --popover: 220 13% 98%;
+    --popover-foreground: 210 3% 25%;
 
-    --primary: 82 35% 26%; /* Muted Olive Green #556B2F */
-    --primary-foreground: 60 9% 98%;
+    --primary: 140 16% 32%; /* #445C4B - Muted Olive */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 34 28% 76%; /* Warm Tan #D2B48C */
-    --secondary-foreground: 195 25% 31%;
+    --secondary: 32 30% 64%; /* #C6A982 - Warm Tan */
+    --secondary-foreground: 210 3% 25%;
 
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 34 28% 76%; /* Warm Tan */
-    --accent-foreground: 195 25% 31%;
+    --accent: 32 30% 64%; /* Warm Tan */
+    --accent-foreground: 210 3% 25%;
 
-    --destructive: 15 45% 58%; /* Muted Terracotta #BC7862 */
-    --destructive-foreground: 60 9% 98%;
+    --destructive: 15 45% 58%; /* Muted Terracotta */
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 83%; /* Light Grey #D3D3D3 */
-    --input: 0 0% 83%;
-    --ring: 82 35% 26%;
+    --border: 210 14% 83%; /* #E0E0E0 - Light Grey */
+    --input: 210 14% 83%;
+    --ring: 140 16% 32%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
   }
 }
 
@@ -47,37 +45,13 @@
   }
 
   body {
-    @apply bg-soft-beige text-dark-slate-gray font-noto-tc;
+    @apply bg-background text-foreground font-noto-tc;
     font-feature-settings: "liga", "kern";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-medium text-dark-slate-gray;
-  }
-}
-
-@layer components {
-  .challenge-card {
-    @apply bg-off-white rounded-xl shadow-sm border border-light-grey/20 
-           hover:shadow-md hover:scale-[1.02] transition-all duration-300 
-           overflow-hidden;
-  }
-
-  .btn-primary {
-    @apply bg-muted-olive text-off-white px-6 py-3 rounded-lg 
-           hover:bg-muted-olive/90 transition-colors duration-200
-           font-medium shadow-sm hover:shadow-md;
-  }
-
-  .btn-secondary {
-    @apply bg-off-white text-muted-olive border border-muted-olive px-6 py-3 
-           rounded-lg hover:bg-muted-olive hover:text-off-white 
-           transition-colors duration-200 font-medium;
-  }
-
-  .tag {
-    @apply bg-warm-tan/20 text-muted-olive px-3 py-1 rounded-full text-sm font-medium;
+    @apply font-semibold text-foreground;
   }
 }

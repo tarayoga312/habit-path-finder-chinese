@@ -2,6 +2,8 @@
 import React from 'react';
 import { Users, Clock, User as UserIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 interface ChallengeCardProps {
   id: string;
@@ -26,58 +28,59 @@ const ChallengeCard: React.FC<ChallengeCardProps> = ({
   featured = false
 }) => {
   return (
-    <div className={`challenge-card ${featured ? 'ring-2 ring-warm-tan' : ''}`}>
-      {featured && (
-        <div className="bg-warm-tan text-muted-olive px-3 py-1 text-xs font-medium text-center">
-          精選挑戰
-        </div>
-      )}
-      
-      <div className="relative">
+    <Card className={`w-full overflow-hidden transition-all duration-300 hover:shadow-xl ${featured ? 'ring-2 ring-secondary' : 'shadow-lg'}`}>
+      <CardHeader className="p-0 relative">
+        {featured && (
+          <div className="absolute top-0 left-0 w-full bg-secondary text-secondary-foreground px-3 py-1 text-xs font-semibold text-center z-10">
+            精選挑戰
+          </div>
+        )}
         <img 
           src={image} 
           alt={name}
           className="w-full h-48 object-cover"
         />
-        <div className="absolute top-3 left-3">
-          <span className="tag">{challengeType}</span>
+        <div className="absolute top-3 right-3 z-10">
+          <Badge variant="secondary" className="bg-white/80 backdrop-blur-sm text-foreground hover:bg-white">
+            {challengeType}
+          </Badge>
         </div>
-      </div>
+      </CardHeader>
       
-      <div className="p-6">
-        <h3 className="text-lg font-semibold text-dark-slate-gray mb-2 line-clamp-2">
+      <CardContent className="p-6">
+        <h3 className="text-xl font-bold text-foreground mb-2 line-clamp-2">
           {name}
         </h3>
         
-        <p className="text-dark-slate-gray/70 text-sm mb-4 line-clamp-3">
+        <p className="text-foreground/70 text-sm mb-4 line-clamp-3 h-[60px]">
           {description}
         </p>
         
-        <div className="flex items-center text-xs text-dark-slate-gray/60 mb-4 space-x-4">
-          <div className="flex items-center space-x-1">
-            <UserIcon className="h-3 w-3" />
-            <span>由 {hostName} 發起</span>
+        <div className="flex items-center text-xs text-foreground/60 space-x-1">
+          <UserIcon className="h-4 w-4" />
+          <span>由 {hostName} 發起</span>
+        </div>
+      </CardContent>
+        
+      <CardFooter className="flex-col items-start p-6 pt-0">
+        <div className="w-full border-t border-border/70 my-4"></div>
+        <div className="flex items-center justify-between w-full text-sm text-foreground/80 mb-4">
+          <div className="flex items-center space-x-2">
+            <Users className="h-4 w-4" />
+            <span className="font-medium">{participantCount} 人參與</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Clock className="h-4 w-4" />
+            <span className="font-medium">{daysRemaining} 天後開始</span>
           </div>
         </div>
         
-        <div className="flex items-center justify-between text-xs text-dark-slate-gray/60 mb-4">
-          <div className="flex items-center space-x-1">
-            <Users className="h-3 w-3" />
-            <span>{participantCount} 人參與</span>
-          </div>
-          <div className="flex items-center space-x-1">
-            <Clock className="h-3 w-3" />
-            <span>{daysRemaining} 天後開始</span>
-          </div>
-        </div>
-        
-        <Button className="w-full btn-primary">
+        <Button size="lg" className="w-full text-base font-semibold">
           加入挑戰
         </Button>
-      </div>
-    </div>
+      </CardFooter>
+    </Card>
   );
 };
 
 export default ChallengeCard;
-
