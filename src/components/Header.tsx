@@ -30,12 +30,14 @@ const Header = () => {
 
           {/* Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <a href="#" className="text-md font-medium text-foreground/80 hover:text-primary transition-colors">
+            <Link to="/" className="text-md font-medium text-foreground/80 hover:text-primary transition-colors">
               探索挑戰
-            </a>
-            <a href="#" className="text-md font-medium text-foreground/80 hover:text-primary transition-colors">
-              我的挑戰
-            </a>
+            </Link>
+            {user && ( // Only show "My Challenges" if the user is logged in
+              <Link to="/my-challenges" className="text-md font-medium text-foreground/80 hover:text-primary transition-colors">
+                我的挑戰
+              </Link>
+            )}
             {profile?.role === 'host' && (
               <Link to="/create-challenge" className="text-md font-medium text-foreground/80 hover:text-primary transition-colors">
                 發起挑戰

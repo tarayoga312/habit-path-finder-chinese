@@ -1,12 +1,14 @@
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
-import { Calendar, User } from 'lucide-react';
+import { Calendar, User, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/auth/AuthProvider';
+import { useToast } from "@/hooks/use-toast";
 
 type ChallengeDetails = Database['public']['Tables']['challenges']['Row'] & {
   users: { name: string; profile_picture_url: string | null } | null;
@@ -17,6 +19,11 @@ const ChallengeDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [challenge, setChallenge] = useState<ChallengeDetails | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isJoining, setIsJoining] = useState(false);
+  
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchChallengeDetails = async () => {
@@ -44,6 +51,53 @@ const ChallengeDetail = () => {
 
     fetchChallengeDetails();
   }, [id]);
+
+  const handleJoinChallenge = async () => {
+    if (!user) {
+      toast({
+        title: "請先登入",
+        description: "您必須登入才能加入挑戰。",
+        variant: "destructive",
+      });
+      navigate('/auth');
+      return;
+    }
+
+    if (!id) return;
+
+    setIsJoining(true);
+    const { error } = await supabase
+      .from('user_challenges')
+      .insert({
+        user_id: user.id,
+        challenge_id: id,
+      });
+    
+    setIsJoining(false);
+
+    if (error) {
+      if (error.code === '23505') { // Unique constraint violation
+        toast({
+          title: "您已加入此挑戰",
+          description: "您可以在「我的挑戰」頁面中找到它。",
+          variant: "default",
+        });
+        navigate('/my-challenges');
+      } else {
+        toast({
+          title: "加入挑戰失敗",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    } else {
+      toast({
+        title: "成功加入挑戰！",
+        description: "開始您的轉變之旅吧！",
+      });
+      navigate('/my-challenges');
+    }
+  };
 
   if (loading) {
     return (
@@ -110,11 +164,13 @@ const ChallengeDetail = () => {
 
               <h2 className="font-semibold text-2xl mt-8 text-foreground">每日任務預覽</h2>
               <ul className="list-disc pl-5 space-y-2">
-                {challenge.daily_tasks.map(task => (
+                {challenge.daily_tasks.length > 0 ? challenge.daily_tasks.map(task => (
                   <li key={task.id}>
                     <strong>第 {task.day_number} 天:</strong> {task.title}
                   </li>
-                ))}
+                )) : (
+                  <p className="text-muted-foreground">此挑戰尚未新增每日任務。</p>
+                )}
               </ul>
             </div>
           </div>
@@ -124,7 +180,10 @@ const ChallengeDetail = () => {
              <div className="sticky top-24 bg-card p-6 rounded-xl shadow-md border">
                 <h3 className="text-xl font-bold mb-4">準備好開始了嗎？</h3>
                 <p className="text-muted-foreground mb-6">加入挑戰，開始為期 {challenge.duration_days} 天的轉變之旅。</p>
-                <Button size="lg" className="w-full text-lg font-semibold">加入挑戰</Button>
+                <Button size="lg" className="w-full text-lg font-semibold" onClick={handleJoinChallenge} disabled={isJoining}>
+                  {isJoining && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isJoining ? '處理中...' : '加入挑戰'}
+                </Button>
              </div>
           </div>
         </div>

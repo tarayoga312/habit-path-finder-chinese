@@ -11,6 +11,7 @@ import Auth from "./pages/Auth";
 import Header from "./components/Header";
 import CreateChallenge from "./pages/CreateChallenge";
 import ChallengeDetail from "./pages/ChallengeDetail";
+import MyChallenges from "./pages/MyChallenges"; // Import the new page
 
 const queryClient = new QueryClient();
 
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/create-challenge" element={<CreateChallenge />} />
             <Route path="/challenge/:id" element={<ChallengeDetail />} />
+            <Route path="/my-challenges" element={<MyChallenges />} /> {/* Add the new route */}
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
