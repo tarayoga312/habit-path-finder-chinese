@@ -363,6 +363,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_full_challenge: {
+        Args: {
+          p_name: string
+          p_description: string
+          p_duration_days: number
+          p_image_url: string
+          p_challenge_type: string
+          p_start_date: string
+          p_tasks: Json
+          p_metrics: Json
+        }
+        Returns: string
+      }
       get_public_challenges: {
         Args: Record<PropertyKey, never>
         Returns: {
