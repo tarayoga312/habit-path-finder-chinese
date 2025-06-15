@@ -360,7 +360,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: { p_user_id: string }
+        Returns: string
+      }
+      is_challenge_host: {
+        Args: { p_challenge_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      is_challenge_participant: {
+        Args: { p_user_challenge_id: string; p_user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
