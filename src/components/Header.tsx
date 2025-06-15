@@ -1,16 +1,18 @@
 
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { Search, Bell, LogIn, LogOut } from 'lucide-react';
+import { useAuth } from '@/auth/AuthProvider';
+import { supabase } from '@/integrations/supabase/client';
+import { Search, Bell, User as UserIcon, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const Header = () => {
-  const { user, signOut, loading } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
-  const handleSignOut = async () => {
-    await signOut();
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     navigate('/');
   };
 
@@ -48,20 +50,32 @@ const Header = () => {
               <Bell className="h-5 w-5 text-foreground/70" />
             </Button>
             
-            {loading ? null : user ? (
-              <>
-                <span className="text-sm font-medium hidden sm:inline-block px-2">{user.email}</span>
-                <Button onClick={handleSignOut} variant="outline">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Logout
-                </Button>
-              </>
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <UserIcon className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">我的帳戶</p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user.email}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    登出
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
               <Button asChild>
-                <Link to="/auth">
-                  <LogIn className="mr-2 h-4 w-4" />
-                  登入
-                </Link>
+                <Link to="/auth">登入</Link>
               </Button>
             )}
           </div>
