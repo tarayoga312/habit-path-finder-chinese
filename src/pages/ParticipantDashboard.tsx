@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -34,9 +33,7 @@ const fetchParticipantChallenge = async (userChallengeId: string): Promise<UserC
   const { data, error } = await supabase
     .from('user_challenges')
     .select(`
-      id,
-      current_day,
-      challenge_status,
+      *,
       challenges (
         *,
         daily_tasks ( * ),
@@ -70,13 +67,96 @@ const buildSchema = (metrics?: ChallengeMetric[]) => {
     return z.object(schemaFields);
 };
 
+const DailyMetricsForm = ({ dailyMetrics, userChallenge }: { dailyMetrics: ChallengeMetric[]; userChallenge: UserChallengeWithDetails }) => {
+  const { toast } = useToast();
+  const [isSavingMetrics, setIsSavingMetrics] = useState(false);
+
+  const formSchema = useMemo(() => buildSchema(dailyMetrics), [dailyMetrics]);
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {},
+  });
+
+  async function onSaveMetrics(values: z.infer<typeof formSchema>) {
+    setIsSavingMetrics(true);
+    const typedValues = values as Record<string, string | number | undefined | null>;
+
+    const dataToInsert = dailyMetrics.map(metric => ({
+      user_challenge_id: userChallenge.id,
+      metric_id: metric.id,
+      data_type: 'daily' as const,
+      value_text: metric.metric_type === 'text_area' ? (typedValues[metric.id] as string | null) : null,
+      value_number: (metric.metric_type === 'number_input' || metric.metric_type === 'slider_1_10') ? (typedValues[metric.id] as number | null) : null,
+    }));
+
+    const { error } = await supabase.from('user_metric_data').insert(dataToInsert);
+
+    setIsSavingMetrics(false);
+
+    if (error) {
+      toast({ title: "儲存失敗", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "成功儲存今日記錄！" });
+      form.reset();
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>今日記錄</CardTitle>
+        <CardDescription>記錄今天的感受與數據，追蹤您的變化。</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSaveMetrics)} className="space-y-8">
+            {dailyMetrics.map(metric => (
+              <FormField
+                key={metric.id}
+                control={form.control}
+                name={metric.id as any}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{metric.metric_name}</FormLabel>
+                    <FormControl>
+                      <>
+                        {metric.metric_type === 'number_input' && <Input type="number" placeholder={metric.description || ''} {...field} />}
+                        {metric.metric_type === 'text_area' && <Textarea placeholder={metric.description || ''} {...field} value={field.value ?? ''} />}
+                        {metric.metric_type === 'slider_1_10' && (
+                          <div className="flex items-center space-x-4">
+                            <Slider
+                              min={1} max={10} step={1}
+                              onValueChange={(value) => field.onChange(value[0])}
+                              value={[field.value as number || 5]}
+                            />
+                            <span className="font-bold text-lg text-primary w-12 text-center">{field.value || '-'}</span>
+                          </div>
+                        )}
+                      </>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ))}
+            <Button type="submit" disabled={isSavingMetrics}>
+              {isSavingMetrics ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+              儲存今日記錄
+            </Button>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
+  );
+};
+
 const ParticipantDashboard = () => {
   const { userChallengeId } = useParams<{ userChallengeId: string }>();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCompleting, setIsCompleting] = useState(false);
-  const [isSavingMetrics, setIsSavingMetrics] = useState(false);
 
   const { data: userChallenge, isLoading, isError } = useQuery<UserChallengeWithDetails | null>({
     queryKey: ['participant_challenge', userChallengeId],
@@ -89,13 +169,6 @@ const ParticipantDashboard = () => {
     [userChallenge]
   );
   
-  const formSchema = useMemo(() => buildSchema(userChallenge?.challenges?.challenge_metrics), [userChallenge?.challenges?.challenge_metrics]);
-  
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {},
-  });
-
   const currentTask = userChallenge?.challenges?.daily_tasks?.find(
     (task) => task.day_number === userChallenge.current_day
   );
@@ -133,30 +206,6 @@ const ParticipantDashboard = () => {
       queryClient.invalidateQueries({ queryKey: ['participant_challenge', userChallengeId] });
     }
   };
-
-  async function onSaveMetrics(values: z.infer<typeof formSchema>) {
-    if (!userChallenge) return;
-    setIsSavingMetrics(true);
-
-    const dataToInsert = dailyMetrics.map(metric => ({
-      user_challenge_id: userChallenge.id,
-      metric_id: metric.id,
-      data_type: 'daily',
-      value_text: metric.metric_type === 'text_area' ? (values[metric.id] as string | null) : null,
-      value_number: (metric.metric_type === 'number_input' || metric.metric_type === 'slider_1_10') ? (values[metric.id] as number | null) : null,
-    }));
-
-    const { error } = await supabase.from('user_metric_data').insert(dataToInsert);
-
-    setIsSavingMetrics(false);
-
-    if (error) {
-      toast({ title: "儲存失敗", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "成功儲存今日記錄！" });
-      form.reset();
-    }
-  }
 
   if (isLoading) return <div><Skeleton className="h-screen w-full" /></div>;
   if (isError) return <div className="text-center py-20 text-red-500">無法載入挑戰資料。</div>;
@@ -198,53 +247,7 @@ const ParticipantDashboard = () => {
             </CardContent>
           </Card>
 
-          {dailyMetrics.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>今日記錄</CardTitle>
-                <CardDescription>記錄今天的感受與數據，追蹤您的變化。</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSaveMetrics)} className="space-y-8">
-                    {dailyMetrics.map(metric => (
-                      <FormField
-                        key={metric.id}
-                        control={form.control}
-                        name={metric.id}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{metric.metric_name}</FormLabel>
-                            <FormControl>
-                              <>
-                                {metric.metric_type === 'number_input' && <Input type="number" placeholder={metric.description || ''} {...field} />}
-                                {metric.metric_type === 'text_area' && <Textarea placeholder={metric.description || ''} {...field} value={field.value ?? ''} />}
-                                {metric.metric_type === 'slider_1_10' && (
-                                  <div className="flex items-center space-x-4">
-                                    <Slider
-                                      min={1} max={10} step={1}
-                                      onValueChange={(value) => field.onChange(value[0])}
-                                      value={[field.value as number || 5]}
-                                    />
-                                    <span className="font-bold text-lg text-primary w-12 text-center">{field.value || '-'}</span>
-                                  </div>
-                                )}
-                              </>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    ))}
-                    <Button type="submit" disabled={isSavingMetrics}>
-                      {isSavingMetrics ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                      儲存今日記錄
-                    </Button>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
-          )}
+          {dailyMetrics.length > 0 && <DailyMetricsForm dailyMetrics={dailyMetrics} userChallenge={userChallenge} />}
         </div>
       </div>
     </div>
