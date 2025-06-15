@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowDown } from 'lucide-react';
+import { ArrowDown, Sprout, TrendingUp } from 'lucide-react';
 
 const HeroSection = () => {
   return (
@@ -35,7 +35,7 @@ const HeroSection = () => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            <div className="text-center">
+            <div className="text-center p-4 transition-transform duration-300 hover:scale-105 cursor-pointer">
               <div className="w-16 h-16 bg-muted-olive/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl font-bold text-muted-olive">30</span>
               </div>
@@ -45,9 +45,9 @@ const HeroSection = () => {
               </p>
             </div>
             
-            <div className="text-center">
+            <div className="text-center p-4 transition-transform duration-300 hover:scale-105 cursor-pointer">
               <div className="w-16 h-16 bg-warm-tan/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">📊</span>
+                <TrendingUp className="h-8 w-8 text-warm-tan" />
               </div>
               <h3 className="font-semibold text-dark-slate-gray mb-2">追蹤進度</h3>
               <p className="text-dark-slate-gray/60 text-sm">
@@ -55,9 +55,9 @@ const HeroSection = () => {
               </p>
             </div>
             
-            <div className="text-center">
+            <div className="text-center p-4 transition-transform duration-300 hover:scale-105 cursor-pointer">
               <div className="w-16 h-16 bg-muted-terracotta/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">🌱</span>
+                <Sprout className="h-8 w-8 text-muted-terracotta" />
               </div>
               <h3 className="font-semibold text-dark-slate-gray mb-2">持續成長</h3>
               <p className="text-dark-slate-gray/60 text-sm">
@@ -76,3 +76,4 @@ const HeroSection = () => {
 };
 
 export default HeroSection;
+

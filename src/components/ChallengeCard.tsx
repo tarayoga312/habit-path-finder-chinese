@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Calendar, Users, Clock } from 'lucide-react';
+import { Users, Clock, User as UserIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface ChallengeCardProps {
@@ -55,7 +55,7 @@ const ChallengeCard: React.FC<ChallengeCardProps> = ({
         
         <div className="flex items-center text-xs text-dark-slate-gray/60 mb-4 space-x-4">
           <div className="flex items-center space-x-1">
-            <User className="h-3 w-3" />
+            <UserIcon className="h-3 w-3" />
             <span>由 {hostName} 發起</span>
           </div>
         </div>
@@ -79,11 +79,5 @@ const ChallengeCard: React.FC<ChallengeCardProps> = ({
   );
 };
 
-// Fix the import issue by using a different icon name
-const User = ({ className }: { className?: string }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-  </svg>
-);
-
 export default ChallengeCard;
+
