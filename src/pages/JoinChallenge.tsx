@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -102,7 +101,7 @@ const JoinChallenge = () => {
         }, {} as Record<string, any>);
     }, [challenge]);
 
-    const form = useForm<z.infer<typeof formSchema>>({
+    const form = useForm<Record<string, any>>({
         resolver: zodResolver(formSchema),
         defaultValues,
     });
