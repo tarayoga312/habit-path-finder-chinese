@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -115,7 +114,7 @@ const ParticipantDashboard = () => {
   
   const formSchema = useMemo(() => buildSchema(dailyMetrics), [dailyMetrics]);
   
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<Record<string, any>>({
     resolver: zodResolver(formSchema), defaultValues: {},
   });
 
@@ -130,7 +129,7 @@ const ParticipantDashboard = () => {
     [progress, challengeStartDate]
   );
 
-  async function onSaveMetrics(values: z.infer<typeof formSchema>) {
+  async function onSaveMetrics(values: Record<string, any>) {
     if (!userChallenge) return;
     setIsSavingMetrics(true);
 
@@ -155,7 +154,7 @@ const ParticipantDashboard = () => {
   }
 
   const handleCompleteTask = async () => {
-    if (!userChallenge || !currentTask) return;
+    if (!userChallenge) return;
     setIsCompleting(true);
   
     const { error: progressError } = await supabase

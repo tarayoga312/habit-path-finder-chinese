@@ -1,4 +1,3 @@
-
 import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -80,12 +79,12 @@ const ResultsReport = () => {
 
     const formSchema = useMemo(() => buildSchema(finalMetrics), [finalMetrics]);
     
-    const form = useForm<z.infer<typeof formSchema>>({
+    const form = useForm<Record<string, any>>({
       resolver: zodResolver(formSchema),
       defaultValues: {},
     });
 
-    async function onSubmit(values: z.infer<typeof formSchema>) {
+    async function onSubmit(values: Record<string, any>) {
         if (!userChallengeId) return;
         setIsSubmitting(true);
         const payload = finalMetrics.map(metric => ({
