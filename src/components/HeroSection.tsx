@@ -1,11 +1,8 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowDown, Sprout, TrendingUp } from 'lucide-react';
-
 const HeroSection = () => {
-  return (
-    <section className="relative bg-background py-24 sm:py-32 overflow-hidden">
+  return <section className="relative bg-background py-24 sm:py-32 overflow-hidden">
       {/* Background decoration */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute -top-20 -left-20 w-72 h-72 bg-primary/20 rounded-full blur-3xl animate-fade-in"></div>
@@ -14,7 +11,7 @@ const HeroSection = () => {
       
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <div className="animate-fade-in">
-          <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6 leading-tight tracking-tighter">
+          <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6 leading-tight tracking-tighter mx-[5px]">
             開始您的
             <span className="text-primary"> 30 日</span>
             <br />
@@ -71,8 +68,6 @@ const HeroSection = () => {
           <ArrowDown className="h-6 w-6 text-foreground/30" />
         </div>
       </div>
-    </section>
-  );
+    </section>;
 };
-
 export default HeroSection;
