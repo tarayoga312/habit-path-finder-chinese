@@ -1,77 +1,62 @@
+
 import React from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { differenceInDays, parseISO } from 'date-fns';
 import HeroSection from '../components/HeroSection';
 import ChallengeSection from '../components/ChallengeSection';
 import Footer from '../components/Footer';
 
-const Index = () => {
-  // Sample challenge data
-  const featuredChallenges = [
-    {
-      id: '1',
-      name: '每日瑜伽練習',
-      description: '透過30天的瑜伽練習，提升身體柔韌性，減輕壓力，培養內心平靜。適合所有程度的練習者。',
-      image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&h=300&fit=crop&crop=center',
-      hostName: '林瑜伽老師',
-      challengeType: '瑜伽',
-      participantCount: 1247,
-      daysRemaining: 3,
-      featured: true
-    },
-    {
-      id: '2',
-      name: '正念冥想之旅',
-      description: '學習正念冥想技巧，每天10分鐘的練習，改善專注力，減少焦慮，提升生活品質。',
-      image: 'https://images.unsplash.com/photo-1506126613408-4e0e0978712e?w=400&h=300&fit=crop&crop=center',
-      hostName: '陳正念導師',
-      challengeType: '冥想',
-      participantCount: 892,
-      daysRemaining: 5,
-      featured: true
-    },
-    {
-      id: '3',
-      name: '健康飲食改造',
-      description: '重新審視您的飲食習慣，學習營養搭配，建立健康的用餐模式，改善整體健康狀況。',
-      image: 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=400&h=300&fit=crop&crop=center',
-      hostName: '王營養師',
-      challengeType: '健康',
-      participantCount: 634,
-      daysRemaining: 1
-    }
-  ];
+const fetchChallenges = async () => {
+  const { data, error } = await supabase.rpc('get_public_challenges');
 
-  const trendingChallenges = [
-    {
-      id: '4',
-      name: '早起習慣養成',
-      description: '改變作息，培養早起習慣。透過科學的方法逐步調整生理時鐘，享受清晨的寧靜時光。',
-      image: 'https://images.unsplash.com/photo-1475598322381-f1b499717c77?w=400&h=300&fit=crop&crop=center',
-      hostName: '張生活教練',
-      challengeType: '生活',
-      participantCount: 456,
-      daysRemaining: 2
-    },
-    {
-      id: '5',
-      name: '創意寫作練習',
-      description: '每天寫作練習，激發創造力，提升文字表達能力。從簡單的日記開始，逐步培養寫作習慣。',
-      image: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?w=400&h=300&fit=crop&crop=center',
-      hostName: '李作家',
-      challengeType: '學習',
-      participantCount: 321,
-      daysRemaining: 7
-    },
-    {
-      id: '6',
-      name: '居家健身計劃',
-      description: '無需器材的居家健身方案，每天30分鐘，提升體能，塑造身材，增強免疫力。',
-      image: 'https://images.unsplash.com/photo-1581009137042-c552e485697a?w=400&h=300&fit=crop&crop=center',
-      hostName: '劉健身教練',
-      challengeType: '健身',
-      participantCount: 789,
-      daysRemaining: 4
-    }
-  ];
+  if (error) {
+    console.error('Error fetching challenges:', error);
+    throw new Error('Could not fetch challenges');
+  }
+
+  if (!data) {
+    return [];
+  }
+
+  // Transform data to match component props
+  return data.map(challenge => {
+    const participantCount = Number(challenge.participant_count);
+
+    const daysRemaining = challenge.start_date
+      ? differenceInDays(parseISO(challenge.start_date), new Date())
+      : 0;
+
+    return {
+      id: challenge.id,
+      name: challenge.name,
+      description: challenge.description || 'No description available.',
+      image: challenge.image_url || 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&h=300&fit=crop&crop=center',
+      hostName: challenge.host_name || 'Anonymous Host',
+      challengeType: challenge.challenge_type || 'General',
+      participantCount: isNaN(participantCount) ? 0 : participantCount,
+      daysRemaining: Math.max(0, daysRemaining),
+      featured: challenge.featured
+    };
+  });
+};
+
+const Index = () => {
+  const { data: challenges, isLoading, isError } = useQuery({
+    queryKey: ['public_challenges'],
+    queryFn: fetchChallenges,
+  });
+
+  if (isError) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <p className="text-red-500 text-lg">無法載入挑戰，請稍後再試。</p>
+      </div>
+    );
+  }
+
+  const featuredChallenges = challenges?.filter(c => c.featured) || [];
+  const trendingChallenges = challenges?.filter(c => !c.featured) || [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -83,12 +68,14 @@ const Index = () => {
           subtitle="由我們的專家團隊精心挑選，最受歡迎且效果顯著的挑戰"
           challenges={featuredChallenges}
           showViewAll={false}
+          isLoading={isLoading}
         />
         
         <ChallengeSection
           title="熱門挑戰"
           subtitle="最多用戶參與的挑戰，加入他們一起成長"
           challenges={trendingChallenges}
+          isLoading={isLoading}
         />
         
         {/* Stats Section */}

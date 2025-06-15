@@ -111,6 +111,7 @@ export type Database = {
           created_at: string
           description: string | null
           duration_days: number
+          featured: boolean
           host_id: string
           id: string
           image_url: string | null
@@ -124,6 +125,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           duration_days?: number
+          featured?: boolean
           host_id: string
           id?: string
           image_url?: string | null
@@ -137,6 +139,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           duration_days?: number
+          featured?: boolean
           host_id?: string
           id?: string
           image_url?: string | null
@@ -360,6 +363,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_public_challenges: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          name: string
+          description: string
+          image_url: string
+          challenge_type: string
+          host_name: string
+          participant_count: number
+          duration_days: number
+          start_date: string
+          featured: boolean
+        }[]
+      }
       get_user_role: {
         Args: { p_user_id: string }
         Returns: string
