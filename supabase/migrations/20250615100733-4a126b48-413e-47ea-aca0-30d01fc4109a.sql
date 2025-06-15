@@ -2,10 +2,13 @@
 -- Add a 'featured' column to the challenges table to distinguish featured challenges.
 ALTER TABLE public.challenges ADD COLUMN featured BOOLEAN NOT NULL DEFAULT FALSE;
 
--- Create a function to securely fetch public challenge data for the homepage.
+-- MODIFIED: Create a function to securely fetch public challenge data for the homepage, with search and filter capabilities.
 -- This function is a SECURITY DEFINER, so it can bypass RLS to join tables
 -- and only expose the necessary public information, which is a secure way to handle public data.
-CREATE OR REPLACE FUNCTION public.get_public_challenges()
+CREATE OR REPLACE FUNCTION public.get_public_challenges(
+    p_search_term TEXT DEFAULT '',
+    p_challenge_type TEXT DEFAULT 'all'
+)
 RETURNS TABLE (
     id uuid,
     name text,
@@ -40,6 +43,16 @@ BEGIN
       public.challenges c
       LEFT JOIN public.users u ON c.host_id = u.id
     WHERE
-      c.status = 'active';
+      c.status = 'active'
+      -- MODIFIED: Add filtering logic
+      AND (
+        p_search_term = '' OR
+        c.name ILIKE '%' || p_search_term || '%' OR
+        u.name ILIKE '%' || p_search_term || '%'
+      )
+      AND (
+        p_challenge_type = 'all' OR
+        c.challenge_type = p_challenge_type
+      );
 END;
 $$;

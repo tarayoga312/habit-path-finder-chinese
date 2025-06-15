@@ -1,14 +1,22 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { differenceInDays, parseISO } from 'date-fns';
 import HeroSection from '../components/HeroSection';
 import ChallengeSection from '../components/ChallengeSection';
 import Footer from '../components/Footer';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Search } from 'lucide-react';
 
-const fetchChallenges = async () => {
-  const { data, error } = await supabase.rpc('get_public_challenges');
+// MODIFIED: The fetch function now accepts search and filter parameters
+const fetchChallenges = async (searchTerm: string, challengeType: string) => {
+  // MODIFIED: Pass parameters to the RPC function
+  const { data, error } = await supabase.rpc('get_public_challenges', {
+    p_search_term: searchTerm,
+    p_challenge_type: challengeType,
+  });
 
   if (error) {
     console.error('Error fetching challenges:', error);
@@ -22,11 +30,9 @@ const fetchChallenges = async () => {
   // Transform data to match component props
   return data.map(challenge => {
     const participantCount = Number(challenge.participant_count);
-
     const daysRemaining = challenge.start_date
       ? differenceInDays(parseISO(challenge.start_date), new Date())
       : 0;
-
     return {
       id: challenge.id,
       name: challenge.name,
@@ -42,9 +48,14 @@ const fetchChallenges = async () => {
 };
 
 const Index = () => {
+  // ADDED: State for search and filter values
+  const [searchTerm, setSearchTerm] = useState('');
+  const [challengeType, setChallengeType] = useState('all');
+
+  // MODIFIED: The query key now includes search and filter state to trigger refetching
   const { data: challenges, isLoading, isError } = useQuery({
-    queryKey: ['public_challenges'],
-    queryFn: fetchChallenges,
+    queryKey: ['public_challenges', searchTerm, challengeType],
+    queryFn: () => fetchChallenges(searchTerm, challengeType),
   });
 
   if (isError) {
@@ -58,10 +69,45 @@ const Index = () => {
   const featuredChallenges = challenges?.filter(c => c.featured) || [];
   const trendingChallenges = challenges?.filter(c => !c.featured) || [];
 
+  // ADDED: A list of unique challenge types for the filter dropdown
+  const challengeTypes = ['all', ...Array.from(new Set(challenges?.map(c => c.challengeType).filter(Boolean) || []))];
+
   return (
     <div className="min-h-screen bg-background">
       <main>
         <HeroSection />
+
+        {/* ADDED: Search and Filter UI */}
+        <section className="py-12 bg-background">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+              <div className="md:col-span-2 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="搜尋挑戰名稱或發起人..."
+                  className="pl-10 h-12 text-base"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div>
+                <Select value={challengeType} onValueChange={setChallengeType}>
+                  <SelectTrigger className="h-12 text-base">
+                    <SelectValue placeholder="篩選挑戰類型" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {challengeTypes.map(type => (
+                      <SelectItem key={type} value={type}>
+                        {type === 'all' ? '所有類型' : type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        </section>
         
         <ChallengeSection
           title="精選挑戰"
@@ -78,7 +124,6 @@ const Index = () => {
           isLoading={isLoading}
         />
         
-        {/* Stats Section */}
         <section className="py-20 bg-background">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
