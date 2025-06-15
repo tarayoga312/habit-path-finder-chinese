@@ -9,6 +9,7 @@ import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./auth/AuthProvider";
 import Auth from "./pages/Auth";
 import Header from "./components/Header";
+import CreateChallenge from "./pages/CreateChallenge";
 
 const queryClient = new QueryClient();
 
@@ -23,6 +24,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/create-challenge" element={<CreateChallenge />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

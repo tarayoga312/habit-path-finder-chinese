@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const Header = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -36,9 +36,11 @@ const Header = () => {
             <a href="#" className="text-md font-medium text-foreground/80 hover:text-primary transition-colors">
               我的挑戰
             </a>
-            <a href="#" className="text-md font-medium text-foreground/80 hover:text-primary transition-colors">
-              發起挑戰
-            </a>
+            {profile?.role === 'host' && (
+              <Link to="/create-challenge" className="text-md font-medium text-foreground/80 hover:text-primary transition-colors">
+                發起挑戰
+              </Link>
+            )}
           </nav>
 
           {/* Actions */}
