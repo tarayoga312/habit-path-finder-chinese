@@ -1,19 +1,29 @@
-import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+
+import { useState, useMemo } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/auth/AuthProvider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Check, Loader2 } from 'lucide-react';
+import { Check, Loader2, Save } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Link } from 'react-router-dom';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Slider } from '@/components/ui/slider';
 import { Tables } from '@/integrations/supabase/types';
 
+// Type definitions
 type DailyTask = Tables<'daily_tasks'>;
+type ChallengeMetric = Tables<'challenge_metrics'>;
 type ChallengeWithDetails = Tables<'challenges'> & {
   daily_tasks: DailyTask[];
+  challenge_metrics: ChallengeMetric[];
   users: { name: string | null } | null;
 };
 type UserChallengeWithDetails = Tables<'user_challenges'> & {
@@ -24,10 +34,13 @@ const fetchParticipantChallenge = async (userChallengeId: string): Promise<UserC
   const { data, error } = await supabase
     .from('user_challenges')
     .select(`
-      *,
+      id,
+      current_day,
+      challenge_status,
       challenges (
         *,
         daily_tasks ( * ),
+        challenge_metrics ( * ),
         users ( name )
       )
     `)
@@ -38,18 +51,49 @@ const fetchParticipantChallenge = async (userChallengeId: string): Promise<UserC
   return data;
 };
 
+// Helper to build a Zod schema dynamically
+const buildSchema = (metrics?: ChallengeMetric[]) => {
+    if (!metrics) return z.object({});
+    const dailyMetrics = metrics.filter(m => m.collection_frequency?.includes('daily'));
+    const schemaFields: Record<string, z.ZodType<any, any>> = {};
+    dailyMetrics.forEach(metric => {
+      switch (metric.metric_type) {
+        case 'number_input':
+        case 'slider_1_10':
+          schemaFields[metric.id] = z.coerce.number({ invalid_type_error: "必須是數字" });
+          break;
+        case 'text_area':
+          schemaFields[metric.id] = z.string().optional();
+          break;
+      }
+    });
+    return z.object(schemaFields);
+};
+
 const ParticipantDashboard = () => {
   const { userChallengeId } = useParams<{ userChallengeId: string }>();
   const { user } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isCompleting, setIsCompleting] = useState(false);
+  const [isSavingMetrics, setIsSavingMetrics] = useState(false);
 
-  const { data: userChallenge, isLoading, isError } = useQuery({
+  const { data: userChallenge, isLoading, isError } = useQuery<UserChallengeWithDetails | null>({
     queryKey: ['participant_challenge', userChallengeId],
     queryFn: () => fetchParticipantChallenge(userChallengeId!),
     enabled: !!userChallengeId && !!user,
+  });
+
+  const dailyMetrics = useMemo(() => 
+    userChallenge?.challenges?.challenge_metrics?.filter(m => m.collection_frequency?.includes('daily')) || [],
+    [userChallenge]
+  );
+  
+  const formSchema = useMemo(() => buildSchema(userChallenge?.challenges?.challenge_metrics), [userChallenge?.challenges?.challenge_metrics]);
+  
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {},
   });
 
   const currentTask = userChallenge?.challenges?.daily_tasks?.find(
@@ -60,7 +104,6 @@ const ParticipantDashboard = () => {
     if (!userChallenge || !currentTask) return;
     setIsCompleting(true);
   
-    // 1. Log the task completion
     const { error: progressError } = await supabase
       .from('user_challenge_progress')
       .insert({
@@ -75,7 +118,6 @@ const ParticipantDashboard = () => {
       return;
     }
   
-    // 2. Advance the day
     const nextDay = userChallenge.current_day + 1;
     const { error: updateError } = await supabase
       .from('user_challenges')
@@ -92,45 +134,119 @@ const ParticipantDashboard = () => {
     }
   };
 
+  async function onSaveMetrics(values: z.infer<typeof formSchema>) {
+    if (!userChallenge) return;
+    setIsSavingMetrics(true);
 
-  if (isLoading) return <div className="container mx-auto max-w-4xl py-12"><Skeleton className="h-64 w-full" /></div>;
+    const dataToInsert = dailyMetrics.map(metric => ({
+      user_challenge_id: userChallenge.id,
+      metric_id: metric.id,
+      data_type: 'daily',
+      value_text: metric.metric_type === 'text_area' ? (values[metric.id] as string | null) : null,
+      value_number: (metric.metric_type === 'number_input' || metric.metric_type === 'slider_1_10') ? (values[metric.id] as number | null) : null,
+    }));
+
+    const { error } = await supabase.from('user_metric_data').insert(dataToInsert);
+
+    setIsSavingMetrics(false);
+
+    if (error) {
+      toast({ title: "儲存失敗", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "成功儲存今日記錄！" });
+      form.reset();
+    }
+  }
+
+  if (isLoading) return <div><Skeleton className="h-screen w-full" /></div>;
   if (isError) return <div className="text-center py-20 text-red-500">無法載入挑戰資料。</div>;
-
   if (!userChallenge) return <div className="text-center py-20">找不到挑戰。</div>;
 
   return (
-    <div className="container mx-auto max-w-4xl py-12">
-      <Link to="/my-challenges" className="text-sm text-primary hover:underline mb-4 block">&larr; 返回我的挑戰</Link>
-      <h1 className="text-4xl font-bold text-foreground mb-2">{userChallenge.challenges?.name}</h1>
-      <p className="text-lg text-muted-foreground mb-8">由 {userChallenge.challenges?.users?.name} 發起</p>
+    <div className="bg-muted/40 min-h-screen">
+      <div className="container mx-auto max-w-4xl py-12">
+        <Link to="/my-challenges" className="text-sm text-primary hover:underline mb-4 block">&larr; 返回我的挑戰</Link>
+        <h1 className="text-4xl font-bold text-foreground mb-2">{userChallenge.challenges?.name}</h1>
+        <p className="text-lg text-muted-foreground mb-8">由 {userChallenge.challenges?.users?.name} 發起</p>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex justify-between items-center">
-            <span>第 {userChallenge.current_day} 天</span>
-            <span className="text-base font-medium text-muted-foreground">{userChallenge.current_day} / {userChallenge.challenges?.duration_days}</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {currentTask ? (
-            <div>
-              <h2 className="text-2xl font-semibold mb-4">{currentTask.title}</h2>
-              <div className="prose max-w-none mb-8 text-foreground/80">
-                <p>{currentTask.description}</p>
-              </div>
-              <Button size="lg" className="w-full" onClick={handleCompleteTask} disabled={isCompleting}>
-                {isCompleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                {isCompleting ? '處理中...' : '完成今日任務'}
-              </Button>
-            </div>
-          ) : (
-            <div className='text-center py-10'>
-              <h2 className="text-2xl font-bold">恭喜！</h2>
-              <p className="text-muted-foreground mt-2">您已完成所有挑戰任務！</p>
-            </div>
+        <div className="space-y-8">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex justify-between items-center">
+                <span>第 {userChallenge.current_day} 天</span>
+                <span className="text-base font-medium text-muted-foreground">{userChallenge.current_day} / {userChallenge.challenges?.duration_days}</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {currentTask ? (
+                <div>
+                  <h2 className="text-2xl font-semibold mb-4">{currentTask.title}</h2>
+                  <div className="prose max-w-none mb-8 text-foreground/80">
+                    <p>{currentTask.description}</p>
+                  </div>
+                  <Button size="lg" className="w-full" onClick={handleCompleteTask} disabled={isCompleting}>
+                    {isCompleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                    {isCompleting ? '處理中...' : '完成今日任務'}
+                  </Button>
+                </div>
+              ) : (
+                <div className='text-center py-10'>
+                  <h2 className="text-2xl font-bold">恭喜！</h2>
+                  <p className="text-muted-foreground mt-2">您已完成所有挑戰任務！</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {dailyMetrics.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>今日記錄</CardTitle>
+                <CardDescription>記錄今天的感受與數據，追蹤您的變化。</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSaveMetrics)} className="space-y-8">
+                    {dailyMetrics.map(metric => (
+                      <FormField
+                        key={metric.id}
+                        control={form.control}
+                        name={metric.id}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{metric.metric_name}</FormLabel>
+                            <FormControl>
+                              <>
+                                {metric.metric_type === 'number_input' && <Input type="number" placeholder={metric.description || ''} {...field} />}
+                                {metric.metric_type === 'text_area' && <Textarea placeholder={metric.description || ''} {...field} value={field.value ?? ''} />}
+                                {metric.metric_type === 'slider_1_10' && (
+                                  <div className="flex items-center space-x-4">
+                                    <Slider
+                                      min={1} max={10} step={1}
+                                      onValueChange={(value) => field.onChange(value[0])}
+                                      value={[field.value as number || 5]}
+                                    />
+                                    <span className="font-bold text-lg text-primary w-12 text-center">{field.value || '-'}</span>
+                                  </div>
+                                )}
+                              </>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    ))}
+                    <Button type="submit" disabled={isSavingMetrics}>
+                      {isSavingMetrics ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                      儲存今日記錄
+                    </Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 };
