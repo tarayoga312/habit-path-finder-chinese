@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -5,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/auth/AuthProvider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Check, Loader2, Save } from 'lucide-react';
+import { Check, Loader2, Save, BarChartHorizontal } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useForm } from 'react-hook-form';
@@ -214,7 +215,15 @@ const ParticipantDashboard = () => {
   return (
     <div className="bg-muted/40 min-h-screen">
       <div className="container mx-auto max-w-4xl py-12">
-        <Link to="/my-challenges" className="text-sm text-primary hover:underline mb-4 block">&larr; 返回我的挑戰</Link>
+        <div className='flex justify-between items-center mb-4'>
+            <Link to="/my-challenges" className="text-sm text-primary hover:underline">&larr; 返回我的挑戰</Link>
+            <Button asChild variant="outline">
+                <Link to={`/my-challenges/${userChallengeId}/progress`}>
+                    <BarChartHorizontal className="mr-2 h-4 w-4" />
+                    查看進度趨勢
+                </Link>
+            </Button>
+        </div>
         <h1 className="text-4xl font-bold text-foreground mb-2">{userChallenge.challenges?.name}</h1>
         <p className="text-lg text-muted-foreground mb-8">由 {userChallenge.challenges?.users?.name} 發起</p>
 

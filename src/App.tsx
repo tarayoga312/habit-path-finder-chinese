@@ -13,6 +13,7 @@ import CreateChallenge from "./pages/CreateChallenge";
 import ChallengeDetail from "./pages/ChallengeDetail";
 import MyChallenges from "./pages/MyChallenges";
 import ParticipantDashboard from "./pages/ParticipantDashboard";
+import ProgressTrends from "./pages/ProgressTrends";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/challenge/:id" element={<ChallengeDetail />} />
             <Route path="/my-challenges" element={<MyChallenges />} />
             <Route path="/my-challenges/:userChallengeId" element={<ParticipantDashboard />} />
+            <Route path="/my-challenges/:userChallengeId/progress" element={<ProgressTrends />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
