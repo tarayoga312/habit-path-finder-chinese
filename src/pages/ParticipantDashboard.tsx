@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -25,9 +24,7 @@ const fetchParticipantChallenge = async (userChallengeId: string): Promise<UserC
   const { data, error } = await supabase
     .from('user_challenges')
     .select(`
-      id,
-      current_day,
-      challenge_status,
+      *,
       challenges (
         *,
         daily_tasks ( * ),
