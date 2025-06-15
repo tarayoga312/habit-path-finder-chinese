@@ -11,7 +11,7 @@ const HeroSection = () => {
       
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <div className="animate-fade-in">
-          <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6 leading-tight tracking-tighter mx-[5px]">
+          <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6 leading-tight tracking-tighter mx-0 px-[3px]">
             開始您的
             <span className="text-primary"> 30 日</span>
             <br />
