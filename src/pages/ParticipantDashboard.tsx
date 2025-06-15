@@ -73,12 +73,12 @@ const DailyMetricsForm = ({ dailyMetrics, userChallenge }: { dailyMetrics: Chall
 
   const formSchema = useMemo(() => buildSchema(dailyMetrics), [dailyMetrics]);
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<Record<string, any>>({
     resolver: zodResolver(formSchema),
     defaultValues: {},
   });
 
-  async function onSaveMetrics(values: z.infer<typeof formSchema>) {
+  async function onSaveMetrics(values: Record<string, any>) {
     setIsSavingMetrics(true);
     const typedValues = values as Record<string, string | number | undefined | null>;
 
@@ -115,7 +115,7 @@ const DailyMetricsForm = ({ dailyMetrics, userChallenge }: { dailyMetrics: Chall
               <FormField
                 key={metric.id}
                 control={form.control}
-                name={metric.id as any}
+                name={metric.id}
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>{metric.metric_name}</FormLabel>
