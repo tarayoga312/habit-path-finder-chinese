@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 type ChallengeDetails = Database['public']['Tables']['challenges']['Row'] & {
   users: { name: string; profile_picture_url: string | null } | null;
   daily_tasks: Array<Database['public']['Tables']['daily_tasks']['Row']>;
+  challenge_metrics: Array<Database['public']['Tables']['challenge_metrics']['Row']>;
 };
 
 const ChallengeDetail = () => {
@@ -35,7 +35,8 @@ const ChallengeDetail = () => {
         .select(`
           *,
           users ( name, profile_picture_url ),
-          daily_tasks ( id, day_number, title )
+          daily_tasks ( id, day_number, title ),
+          challenge_metrics ( id, metric_name, metric_type, description )
         `)
         .eq('id', id)
         .order('day_number', { referencedTable: 'daily_tasks', ascending: true })
@@ -63,20 +64,25 @@ const ChallengeDetail = () => {
       return;
     }
 
-    if (!id) return;
+    if (!id || !challenge) return;
 
+    // If there are metrics, navigate to the data entry page.
+    if (challenge.challenge_metrics && challenge.challenge_metrics.length > 0) {
+      navigate(`/join-challenge/${id}`);
+      return;
+    }
+
+    // If no metrics, join directly using the RPC.
     setIsJoining(true);
-    const { error } = await supabase
-      .from('user_challenges')
-      .insert({
-        user_id: user.id,
-        challenge_id: id,
-      });
-    
+    const { error: rpcError } = await supabase.rpc('join_challenge_with_initial_data', {
+      p_challenge_id: id,
+      p_user_id: user.id,
+      p_initial_metrics: []
+    });
     setIsJoining(false);
 
-    if (error) {
-      if (error.code === '23505') { // Unique constraint violation
+    if (rpcError) {
+      if (rpcError.code === '23505') { // Unique constraint violation
         toast({
           title: "您已加入此挑戰",
           description: "您可以在「我的挑戰」頁面中找到它。",
@@ -86,7 +92,7 @@ const ChallengeDetail = () => {
       } else {
         toast({
           title: "加入挑戰失敗",
-          description: error.message,
+          description: rpcError.message,
           variant: "destructive",
         });
       }
@@ -182,7 +188,7 @@ const ChallengeDetail = () => {
                 <p className="text-muted-foreground mb-6">加入挑戰，開始為期 {challenge.duration_days} 天的轉變之旅。</p>
                 <Button size="lg" className="w-full text-lg font-semibold" onClick={handleJoinChallenge} disabled={isJoining}>
                   {isJoining && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isJoining ? '處理中...' : '加入挑戰'}
+                  {isJoining ? '處理中...' : (challenge.challenge_metrics.length > 0 ? '下一步：記錄初始數據' : '加入挑戰')}
                 </Button>
              </div>
           </div>

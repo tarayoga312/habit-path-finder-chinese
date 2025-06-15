@@ -390,6 +390,14 @@ export type Database = {
         Args: { p_user_challenge_id: string; p_user_id: string }
         Returns: boolean
       }
+      join_challenge_with_initial_data: {
+        Args: {
+          p_challenge_id: string
+          p_user_id: string
+          p_initial_metrics: Json
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

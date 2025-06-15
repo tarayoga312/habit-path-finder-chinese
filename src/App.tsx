@@ -14,6 +14,7 @@ import ChallengeDetail from "./pages/ChallengeDetail";
 import MyChallenges from "./pages/MyChallenges";
 import ParticipantDashboard from "./pages/ParticipantDashboard";
 import ProgressTrends from "./pages/ProgressTrends";
+import JoinChallenge from "./pages/JoinChallenge";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/create-challenge" element={<CreateChallenge />} />
+            <Route path="/join-challenge/:id" element={<JoinChallenge />} />
             <Route path="/challenge/:id" element={<ChallengeDetail />} />
             <Route path="/my-challenges" element={<MyChallenges />} />
             <Route path="/my-challenges/:userChallengeId" element={<ParticipantDashboard />} />
