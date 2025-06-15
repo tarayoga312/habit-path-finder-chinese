@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/auth/AuthProvider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Check, Loader2, Save, BarChartHorizontal } from 'lucide-react';
+import { Check, Loader2, Save, BarChartHorizontal, CalendarDays } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useForm } from 'react-hook-form';
@@ -16,6 +16,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
+import { Calendar } from '@/components/ui/calendar';
+import { addDays, parseISO } from 'date-fns';
 import { Tables } from '@/integrations/supabase/types';
 
 // Type definitions
@@ -27,16 +29,27 @@ type ChallengeWithDetails = Tables<'challenges'> & {
   users: { name: string | null } | null;
 };
 type UserChallengeWithDetails = Tables<'user_challenges'> & {
-  challenges: ChallengeWithDetails | null;
+  challenges: ChallengeWithDetails;
+};
+type UserChallengeProgress = Tables<'user_challenge_progress'>;
+
+type ParticipantChallengeData = {
+  userChallenge: UserChallengeWithDetails | null;
+  progress: UserChallengeProgress[];
 };
 
-const fetchParticipantChallenge = async (userChallengeId: string): Promise<UserChallengeWithDetails | null> => {
-  const { data, error } = await supabase
+const fetchParticipantChallengeData = async (userChallengeId: string): Promise<ParticipantChallengeData> => {
+  const challengePromise = supabase
     .from('user_challenges')
     .select(`
-      *,
-      challenges (
+      id,
+      current_day,
+      challenge_status,
+      joined_at,
+      challenges!inner (
         *,
+        start_date,
+        duration_days,
         daily_tasks ( * ),
         challenge_metrics ( * ),
         users ( name )
@@ -45,11 +58,22 @@ const fetchParticipantChallenge = async (userChallengeId: string): Promise<UserC
     .eq('id', userChallengeId)
     .single();
 
-  if (error) throw new Error(error.message);
-  return data;
+  const progressPromise = supabase
+    .from('user_challenge_progress')
+    .select('day_number')
+    .eq('user_challenge_id', userChallengeId);
+
+  const [challengeResult, progressResult] = await Promise.all([challengePromise, progressPromise]);
+
+  if (challengeResult.error) throw new Error(challengeResult.error.message);
+  if (progressResult.error) throw new Error(progressResult.error.message);
+
+  return {
+    userChallenge: challengeResult.data as UserChallengeWithDetails | null,
+    progress: progressResult.data || [],
+  };
 };
 
-// Helper to build a Zod schema dynamically
 const buildSchema = (metrics?: ChallengeMetric[]) => {
     if (!metrics) return z.object({});
     const dailyMetrics = metrics.filter(m => m.collection_frequency?.includes('daily'));
@@ -68,27 +92,54 @@ const buildSchema = (metrics?: ChallengeMetric[]) => {
     return z.object(schemaFields);
 };
 
-const DailyMetricsForm = ({ dailyMetrics, userChallenge }: { dailyMetrics: ChallengeMetric[]; userChallenge: UserChallengeWithDetails }) => {
+const ParticipantDashboard = () => {
+  const { userChallengeId } = useParams<{ userChallengeId: string }>();
+  const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [isCompleting, setIsCompleting] = useState(false);
   const [isSavingMetrics, setIsSavingMetrics] = useState(false);
 
-  const formSchema = useMemo(() => buildSchema(dailyMetrics), [dailyMetrics]);
-
-  const form = useForm<Record<string, any>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {},
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['participant_challenge_data', userChallengeId],
+    queryFn: () => fetchParticipantChallengeData(userChallengeId!),
+    enabled: !!userChallengeId && !!user,
   });
 
-  async function onSaveMetrics(values: Record<string, any>) {
+  const { userChallenge, progress } = data || {};
+
+  const dailyMetrics = useMemo(() => 
+    userChallenge?.challenges?.challenge_metrics?.filter(m => m.collection_frequency?.includes('daily')) || [],
+    [userChallenge]
+  );
+  
+  const formSchema = useMemo(() => buildSchema(userChallenge?.challenges.challenge_metrics), [userChallenge]);
+  
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema), defaultValues: {},
+  });
+
+  const currentTask = userChallenge?.challenges?.daily_tasks?.find(
+    (task) => task.day_number === userChallenge.current_day
+  );
+  
+  const challengeStartDate = userChallenge?.challenges?.start_date ? parseISO(userChallenge.challenges.start_date) : new Date();
+  
+  const completedDays = useMemo(() => 
+    progress?.map(p => addDays(challengeStartDate, p.day_number - 1)) || [], 
+    [progress, challengeStartDate]
+  );
+
+  async function onSaveMetrics(values: z.infer<typeof formSchema>) {
+    if (!userChallenge) return;
     setIsSavingMetrics(true);
-    const typedValues = values as Record<string, string | number | undefined | null>;
 
     const dataToInsert = dailyMetrics.map(metric => ({
       user_challenge_id: userChallenge.id,
       metric_id: metric.id,
       data_type: 'daily' as const,
-      value_text: metric.metric_type === 'text_area' ? (typedValues[metric.id] as string | null) : null,
-      value_number: (metric.metric_type === 'number_input' || metric.metric_type === 'slider_1_10') ? (typedValues[metric.id] as number | null) : null,
+      value_text: metric.metric_type === 'text_area' ? (values[metric.id] as string | null) : null,
+      value_number: (metric.metric_type === 'number_input' || metric.metric_type === 'slider_1_10') ? (values[metric.id] as number | null) : null,
     }));
 
     const { error } = await supabase.from('user_metric_data').insert(dataToInsert);
@@ -102,77 +153,6 @@ const DailyMetricsForm = ({ dailyMetrics, userChallenge }: { dailyMetrics: Chall
       form.reset();
     }
   }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>今日記錄</CardTitle>
-        <CardDescription>記錄今天的感受與數據，追蹤您的變化。</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSaveMetrics)} className="space-y-8">
-            {dailyMetrics.map(metric => (
-              <FormField
-                key={metric.id}
-                control={form.control}
-                name={metric.id}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{metric.metric_name}</FormLabel>
-                    <FormControl>
-                      <>
-                        {metric.metric_type === 'number_input' && <Input type="number" placeholder={metric.description || ''} {...field} />}
-                        {metric.metric_type === 'text_area' && <Textarea placeholder={metric.description || ''} {...field} value={field.value ?? ''} />}
-                        {metric.metric_type === 'slider_1_10' && (
-                          <div className="flex items-center space-x-4">
-                            <Slider
-                              min={1} max={10} step={1}
-                              onValueChange={(value) => field.onChange(value[0])}
-                              value={[field.value as number || 5]}
-                            />
-                            <span className="font-bold text-lg text-primary w-12 text-center">{field.value || '-'}</span>
-                          </div>
-                        )}
-                      </>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            ))}
-            <Button type="submit" disabled={isSavingMetrics}>
-              {isSavingMetrics ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-              儲存今日記錄
-            </Button>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
-  );
-};
-
-const ParticipantDashboard = () => {
-  const { userChallengeId } = useParams<{ userChallengeId: string }>();
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [isCompleting, setIsCompleting] = useState(false);
-
-  const { data: userChallenge, isLoading, isError } = useQuery<UserChallengeWithDetails | null>({
-    queryKey: ['participant_challenge', userChallengeId],
-    queryFn: () => fetchParticipantChallenge(userChallengeId!),
-    enabled: !!userChallengeId && !!user,
-  });
-
-  const dailyMetrics = useMemo(() => 
-    userChallenge?.challenges?.challenge_metrics?.filter(m => m.collection_frequency?.includes('daily')) || [],
-    [userChallenge]
-  );
-  
-  const currentTask = userChallenge?.challenges?.daily_tasks?.find(
-    (task) => task.day_number === userChallenge.current_day
-  );
 
   const handleCompleteTask = async () => {
     if (!userChallenge || !currentTask) return;
@@ -204,7 +184,7 @@ const ParticipantDashboard = () => {
       toast({ title: "錯誤", description: updateError.message, variant: "destructive" });
     } else {
       toast({ title: `第 ${userChallenge.current_day} 天完成！`, description: "做得好，繼續前進！" });
-      queryClient.invalidateQueries({ queryKey: ['participant_challenge', userChallengeId] });
+      queryClient.invalidateQueries({ queryKey: ['participant_challenge_data', userChallengeId] });
     }
   };
 
@@ -227,36 +207,110 @@ const ParticipantDashboard = () => {
         <h1 className="text-4xl font-bold text-foreground mb-2">{userChallenge.challenges?.name}</h1>
         <p className="text-lg text-muted-foreground mb-8">由 {userChallenge.challenges?.users?.name} 發起</p>
 
-        <div className="space-y-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex justify-between items-center">
-                <span>第 {userChallenge.current_day} 天</span>
-                <span className="text-base font-medium text-muted-foreground">{userChallenge.current_day} / {userChallenge.challenges?.duration_days}</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {currentTask ? (
-                <div>
-                  <h2 className="text-2xl font-semibold mb-4">{currentTask.title}</h2>
-                  <div className="prose max-w-none mb-8 text-foreground/80">
-                    <p>{currentTask.description}</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="md:col-span-2 space-y-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex justify-between items-center">
+                  <span>第 {userChallenge.current_day} 天</span>
+                  <span className="text-base font-medium text-muted-foreground">{userChallenge.current_day} / {userChallenge.challenges?.duration_days}</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {currentTask ? (
+                  <div>
+                    <h2 className="text-2xl font-semibold mb-4">{currentTask.title}</h2>
+                    <div className="prose max-w-none mb-8 text-foreground/80">
+                      <p>{currentTask.description}</p>
+                    </div>
+                    <Button size="lg" className="w-full" onClick={handleCompleteTask} disabled={isCompleting}>
+                      {isCompleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                      {isCompleting ? '處理中...' : '完成今日任務'}
+                    </Button>
                   </div>
-                  <Button size="lg" className="w-full" onClick={handleCompleteTask} disabled={isCompleting}>
-                    {isCompleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                    {isCompleting ? '處理中...' : '完成今日任務'}
-                  </Button>
-                </div>
-              ) : (
-                <div className='text-center py-10'>
-                  <h2 className="text-2xl font-bold">恭喜！</h2>
-                  <p className="text-muted-foreground mt-2">您已完成所有挑戰任務！</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                ) : (
+                  <div className='text-center py-10'>
+                    <h2 className="text-2xl font-bold">恭喜！</h2>
+                    <p className="text-muted-foreground mt-2">您已完成所有挑戰任務！</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-          {dailyMetrics.length > 0 && <DailyMetricsForm dailyMetrics={dailyMetrics} userChallenge={userChallenge} />}
+            {dailyMetrics.length > 0 && currentTask && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>今日記錄</CardTitle>
+                  <CardDescription>記錄今天的感受與數據，追蹤您的變化。</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSaveMetrics)} className="space-y-8">
+                      {dailyMetrics.map(metric => (
+                        <FormField
+                          key={metric.id}
+                          control={form.control}
+                          name={metric.id}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>{metric.metric_name}</FormLabel>
+                              <FormControl>
+                                <>
+                                  {metric.metric_type === 'number_input' && <Input type="number" placeholder={metric.description || ''} {...field} />}
+                                  {metric.metric_type === 'text_area' && <Textarea placeholder={metric.description || ''} {...field} value={field.value ?? ''} />}
+                                  {metric.metric_type === 'slider_1_10' && (
+                                    <div className="flex items-center space-x-4">
+                                      <Slider
+                                        min={1} max={10} step={1}
+                                        onValueChange={(value) => field.onChange(value[0])}
+                                        value={[field.value as number || 5]}
+                                      />
+                                      <span className="font-bold text-lg text-primary w-12 text-center">{field.value || '-'}</span>
+                                    </div>
+                                  )}
+                                </>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      ))}
+                      <Button type="submit" disabled={isSavingMetrics}>
+                        {isSavingMetrics ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        儲存今日記錄
+                      </Button>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          <div className="space-y-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <CalendarDays className="mr-2 h-5 w-5" />
+                  進度月曆
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex justify-center">
+                <Calendar
+                  month={challengeStartDate}
+                  modifiers={{ 
+                    completed: completedDays,
+                    today: new Date(),
+                  }}
+                  modifiersClassNames={{
+                    completed: 'day-completed',
+                    today: 'day-today-highlight'
+                  }}
+                  className="p-0"
+                  disabled={(date) => date > new Date()}
+                />
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>

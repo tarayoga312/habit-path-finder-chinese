@@ -6,6 +6,7 @@
 @tailwind utilities;
 
 @layer base {
+  /* ... keep existing code (root variables) */
   :root {
     --background: 0 0% 100%; /* #FFFFFF */
     --foreground: 210 3% 25%; /* #3C4043 - Google's Dark Gray */
@@ -40,6 +41,7 @@
 }
 
 @layer base {
+  /* ... keep existing code (base styles) */
   * {
     @apply border-border;
   }
@@ -54,4 +56,21 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-semibold text-foreground;
   }
+}
+
+/* Custom Calendar Styles for Participant Dashboard */
+.day-completed {
+  background-color: hsl(140 16% 32%) !important; /* Muted Olive -- same as primary */
+  color: hsl(0 0% 100%) !important; /* Off-White -- same as primary-foreground */
+  border-radius: 0.5rem;
+  opacity: 1;
+}
+.day-completed:hover {
+  background-color: hsl(140 16% 28%) !important; /* Darker olive */
+}
+
+.day-today-highlight {
+    font-weight: bold;
+    border: 2px solid hsl(32 30% 64%) !important; /* Warm Tan -- same as secondary/accent */
+    border-radius: 0.5rem;
 }
