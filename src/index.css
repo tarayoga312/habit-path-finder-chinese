@@ -1,5 +1,5 @@
 
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;500;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -58,7 +58,7 @@
   }
 }
 
-/* Custom Calendar Styles for Participant Dashboard */
+/* ... keep existing code (Custom Calendar Styles) */
 .day-completed {
   background-color: hsl(140 16% 32%) !important; /* Muted Olive -- same as primary */
   color: hsl(0 0% 100%) !important; /* Off-White -- same as primary-foreground */

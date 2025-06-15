@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -120,7 +121,7 @@ export default {
 				'scale-in': 'scale-in 0.2s ease-out'
 			},
 			fontFamily: {
-				'noto-tc': ['Noto Sans TC', 'sans-serif']
+				'noto-tc': ['Noto Serif TC', 'serif']
 			}
 		}
 	},
