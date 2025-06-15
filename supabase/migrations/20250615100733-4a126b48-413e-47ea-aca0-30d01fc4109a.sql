@@ -5,9 +5,10 @@ ALTER TABLE public.challenges ADD COLUMN featured BOOLEAN NOT NULL DEFAULT FALSE
 -- MODIFIED: Create a function to securely fetch public challenge data for the homepage, with search and filter capabilities.
 -- This function is a SECURITY DEFINER, so it can bypass RLS to join tables
 -- and only expose the necessary public information, which is a secure way to handle public data.
+-- MODIFIED: Parameters are now in alphabetical order to fix a PostgREST issue.
 CREATE OR REPLACE FUNCTION public.get_public_challenges(
-    p_search_term TEXT DEFAULT '',
-    p_challenge_type TEXT DEFAULT 'all'
+    p_challenge_type TEXT DEFAULT 'all',
+    p_search_term TEXT DEFAULT ''
 )
 RETURNS TABLE (
     id uuid,

@@ -12,11 +12,12 @@ import { Search } from 'lucide-react';
 
 // MODIFIED: The fetch function now accepts search and filter parameters
 const fetchChallenges = async (searchTerm: string, challengeType: string) => {
-  // MODIFIED: Pass parameters to the RPC function
+  // MODIFIED: Pass parameters to the RPC function in alphabetical order
+  // and cast to 'any' to resolve TypeScript error from stale type definitions.
   const { data, error } = await supabase.rpc('get_public_challenges', {
-    p_search_term: searchTerm,
     p_challenge_type: challengeType,
-  });
+    p_search_term: searchTerm,
+  } as any);
 
   if (error) {
     console.error('Error fetching challenges:', error);
